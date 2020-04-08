@@ -1620,6 +1620,24 @@ impl Build {
             }
         }
 
+        // This won't work outside of build scripts now, but should be helpful already
+        if let Some(target_ptr_width) = std::env::var("CARGO_CFG_TARGET_POINTER_WIDTH").map_err(|err| if let std::env::VarError::NotUnicode(_) = err { panic!("Invalid encoding of env var CARGO_CFG_TARGET_POINTER_WIDTH") }).ok() {
+            match cmd.family {
+                ToolFamily::Clang => {
+                    cmd.args.push(format!("-fnew-alignment={}", target_ptr_width).into());
+                    cmd.args.push(format!("-fmax-type-align={}", target_ptr_width).into());
+                },
+                ToolFamily::Gnu => {
+                    cmd.args.push(format!("-mstack-align={}", target_ptr_width).into());
+                    cmd.args.push(format!("-mdata-align={}", target_ptr_width).into());
+                    cmd.args.push(format!("-mconst-align={}", target_ptr_width).into());
+                },
+                ToolFamily::Msvc { .. } => {
+                    // I don't know what needs to be set up here.
+                },
+            }
+        }
+
         if target.contains("-ios") {
             // FIXME: potential bug. iOS is always compiled with Clang, but Gcc compiler may be
             // detected instead.
